@@ -1,0 +1,42 @@
+name: build-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref to build'
+        required: true
+  release:
+    types:
+    - published
+
+jobs:
+  linux:
+    name: Linux (Generic)
+    env:
+      BUILD_TYPE: Release
+
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install dependencies
+      run: sudo apt-get install -y cmake build-essential ninja-build libsdl2-dev libsdl2-mixer-dev libsdl2-mixer-2.0-0 libsdl2-2.0-0 fluidsynth
+      
+    - name: Configure
+      working-directory: ${{github.workspace}}/build
+      run: cmake -GNinja $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_INSTALL_PREFIX:PATH=$GITHUB_WORKSPACE/artifacts
+      
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: cmake --build . -j $(nproc) --config $BUILD_TYPE
+    
+    - name: Install
+      working-directory: ${{github.workspace}}/build
+      # Use CMake to "install" build artifacts (only interested in CMake registered targets) to our custom artifacts directory
+      run: cmake --install . --config $BUILD_TYPE
+      
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        name: SpaceCadetPinball_build_${{ github.run_number }}_linux
+        path: ${{github.workspace}}/artifacts
